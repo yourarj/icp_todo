@@ -7,5 +7,5 @@ service : {
   delete : (nat64) -> (Result);
   fetch_all : (nat64, nat64) -> (Result_1) query;
   get : (nat64) -> (opt Item) query;
-  update : (nat64, Item) -> (Result);
+  update : (nat64, text) -> (Result);
 }

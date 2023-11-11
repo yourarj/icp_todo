@@ -104,8 +104,9 @@ fn create(key: u64, value: String) -> Result<(), String> {
 
 #[candid_method(update)]
 #[update(name = "update")]
-fn update(key: u64, value: Item) -> Result<(), String> {
-  DATA_STORE.with(|p| p.borrow_mut().insert(key, value));
+fn update(key: u64, value: String) -> Result<(), String> {
+  let id = ic_cdk::id();
+  DATA_STORE.with(|p| p.borrow_mut().insert(key, Item::new(id, value)));
   Ok(())
 }
 
