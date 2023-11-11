@@ -1,4 +1,3 @@
 [workspace]
-members = [
-    "src/icp_todo_backend",
-]
+members = ["src/icp_todo_backend"]
+resolver = "2"

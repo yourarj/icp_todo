@@ -22,3 +22,6 @@ dist/
 
 # environment variables
 .env
+
+# exclude .log files
+*.log
