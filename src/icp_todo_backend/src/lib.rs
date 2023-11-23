@@ -62,23 +62,23 @@ static DATA_STORE: RefCell<StableBTreeMap<u64, Item, Memory>> =
 #[query(name = "fetch_all")]
 #[candid_method(query)]
 fn fetch_all(page_number: usize, page_size: usize) -> Result<Page, String> {
-  let id = ic_cdk::id();
+  let caller = ic_cdk::caller();
 
   let items = DATA_STORE.with(|p| {
     p.borrow()
       .iter()
       .map(|(_, item)| item)
-      .filter(|ref item| item.owner.eq(&id))
+      .filter(|item| item.owner.eq(&caller))
       .skip((page_number - 1) * page_size)
-      .take(page_size as usize)
+      .take(page_size)
       .collect()
   });
 
   // for simplyfying the logic always considering has next pages
-  return Ok(Page {
-    items: items,
+  Ok(Page {
+    items,
     has_next_page: true,
-  });
+  })
 }
 
 #[query(name = "get")]
@@ -91,13 +91,13 @@ fn get(key: u64) -> Option<Item> {
 #[candid_method(update)]
 
 fn create(key: u64, value: String) -> Result<(), String> {
-  let id = ic_cdk::id();
+  let caller = ic_cdk::caller();
   DATA_STORE.with(|p| {
     let mut store_ref = p.borrow_mut();
     if store_ref.contains_key(&key) {
       return Err("Duplicate Id".to_owned());
     }
-    store_ref.insert(key, Item::new(id, value));
+    store_ref.insert(key, Item::new(caller, value));
     Ok(())
   })
 }
@@ -105,16 +105,39 @@ fn create(key: u64, value: String) -> Result<(), String> {
 #[candid_method(update)]
 #[update(name = "update")]
 fn update(key: u64, value: String) -> Result<(), String> {
-  let id = ic_cdk::id();
-  DATA_STORE.with(|p| p.borrow_mut().insert(key, Item::new(id, value)));
-  Ok(())
+  DATA_STORE.with(|map| {
+    if map
+      .borrow()
+      .get(&key)
+      .filter(|item| item.owner == ic_cdk::caller())
+      .is_some()
+    {
+      map
+        .borrow_mut()
+        .insert(key, Item::new(ic_cdk::caller(), value));
+    } else {
+      return Err("You are not the owner of todo item".to_owned());
+    };
+    Ok(())
+  })
 }
 
 #[candid_method(update)]
 #[update(name = "delete")]
 fn delete(key: u64) -> Result<(), String> {
-  DATA_STORE.with(|p| p.borrow_mut().remove(&key));
-  Ok(())
+  DATA_STORE.with(|map| {
+    if map
+      .borrow()
+      .get(&key)
+      .filter(|item| item.owner == ic_cdk::caller())
+      .is_some()
+    {
+      map.borrow_mut().remove(&key);
+    } else {
+      return Err("You are not the owner of todo item".to_owned());
+    };
+    Ok(())
+  })
 }
 
 candid::export_service!();
